@@ -10,21 +10,38 @@ import (
 )
 
 func main() {
-	// koneksi DB
 	config.ConnectDatabase()
 
-	// init Gin
 	r := gin.Default()
 
-	// route healthcheck
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "TUBESIMPAL TuneTix API is running 🚀",
 		})
 	})
 
-	// route payment
+	// Auth
+	r.POST("/auth/register", controllers.Register)
+	r.POST("/auth/login", controllers.Login)
+
+	// VALIDATION TUGAS LAMA (biarin)
+	r.POST("/tickets/order", controllers.CreateTicketOrder)
 	r.POST("/payments/charge", controllers.ChargePayment)
+
+	// ==== ROUTE TUNETIX BARU ====
+
+	// Events
+	r.GET("/events", controllers.GetEvents)
+	r.GET("/events/:id", controllers.GetEventByID)
+	r.GET("/events/:id/tickets", controllers.GetTicketsByEvent)
+
+	// Orders + Payment
+	r.POST("/orders", controllers.CreateOrder)
+	r.GET("/orders/:id", controllers.GetOrderByID)
+	r.POST("/orders/:id/pay", controllers.PayOrder)
+
+	// Dashboard user
+	r.GET("/me/orders", controllers.GetMyOrders)
 
 	log.Println("✅ Server running on http://localhost:3000")
 	if err := r.Run(":3000"); err != nil {

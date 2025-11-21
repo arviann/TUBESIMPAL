@@ -2,22 +2,11 @@ package controllers
 
 import (
 	"net/http"
+
 	"tubesimpal-backend/models"
 
 	"github.com/gin-gonic/gin"
 )
-
-// helper: format error validasi jadi {field, message}
-func validationErrorsToResponse(err error) []map[string]string {
-	errors := []map[string]string{}
-
-	errors = append(errors, map[string]string{
-		"field":   "-",
-		"message": err.Error(),
-	})
-
-	return errors
-}
 
 // ChargePayment menangani POST /payments/charge
 func ChargePayment(c *gin.Context) {
@@ -33,13 +22,13 @@ func ChargePayment(c *gin.Context) {
 		return
 	}
 
-	// TODO: nanti bisa:
-	// - cek nomor kartu lebih lanjut (algoritma Luhn)
-	// - simpan transaksi ke DB lewat config.DB
-	// - panggil payment gateway dummy
+	// Di sini kamu bisa tambah logika lain:
+	// - cek limit, fraud detection, dsb.
+	// Untuk TUBES: cukup sampai validasi dulu.
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Pembayaran valid dan sedang diproses",
+		"data":    req,
 	})
 }
