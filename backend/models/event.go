@@ -15,6 +15,7 @@ type Event struct {
 	Category    string    `json:"category"`
 	CreatedAt   time.Time `gorm:"column:created_at" json:"created_at"`
 
+	// relasi: satu event punya banyak ticket types
 	TicketTypes []TicketType `gorm:"foreignKey:EventID" json:"ticket_types,omitempty"`
 }
 
@@ -22,7 +23,7 @@ type Event struct {
 type TicketType struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
 	EventID     uint   `gorm:"column:event_id" json:"event_id"`
-	Name        string `json:"name"`
+	Name        string `json:"name"` // REGULER / VIP / VVIP
 	Price       int    `json:"price"`
 	Quota       *int   `json:"quota,omitempty"`
 	Description string `json:"description"`

@@ -14,6 +14,7 @@ func main() {
 
 	r := gin.Default()
 
+	// health check
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "TUBESIMPAL TuneTix API is running 🚀",
@@ -40,7 +41,7 @@ func main() {
 	r.GET("/orders/:id", controllers.GetOrderByID)
 	r.POST("/orders/:id/pay", controllers.PayOrder)
 
-	// Dashboard user
+	// Dashboard user (My Orders)
 	r.GET("/me/orders", controllers.GetMyOrders)
 
 	log.Println("✅ Server running on http://localhost:3000")

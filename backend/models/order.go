@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// ==== FORM VALIDATION YANG LAMA (tetap dipakai) ====
+// ==== FORM VALIDATION UNTUK PAYMENT ====
 
 type PaymentRequest struct {
 	NomorKartu       string  `json:"nomorKartu" binding:"required,numeric,min=16,max=19"`
@@ -14,12 +14,18 @@ type PaymentRequest struct {
 // ==== MODEL DB UNTUK TUNETIX ====
 
 type Order struct {
-	ID          uint        `gorm:"primaryKey" json:"order_id"`
-	UserID      uint        `gorm:"column:user_id" json:"user_id"`
-	TotalAmount int         `gorm:"column:total_amount" json:"total_amount"`
-	Status      string      `json:"status"` // PENDING / PAID / CANCELLED
-	CreatedAt   time.Time   `gorm:"column:created_at" json:"created_at"`
-	Items       []OrderItem `gorm:"foreignKey:OrderID" json:"items"`
+	ID          uint      `gorm:"primaryKey" json:"order_id"`
+	UserID      uint      `gorm:"column:user_id" json:"user_id"`
+	EventID     uint      `gorm:"column:event_id" json:"event_id"`
+	TotalAmount int       `gorm:"column:total_amount" json:"total_amount"`
+	Status      string    `json:"status"` // PENDING / PAID / CANCELLED
+	CreatedAt   time.Time `gorm:"column:created_at" json:"created_at"`
+
+	// relasi ke order_items
+	Items []OrderItem `gorm:"foreignKey:OrderID" json:"items"`
+
+	// relasi ke event
+	Event Event `json:"event,omitempty"`
 }
 
 type OrderItem struct {
@@ -29,4 +35,7 @@ type OrderItem struct {
 	Quantity     int  `json:"quantity"`
 	UnitPrice    int  `gorm:"column:unit_price" json:"unit_price"`
 	Subtotal     int  `json:"subtotal"`
+
+	// relasi ke ticket_types
+	TicketType TicketType `json:"ticket_type,omitempty"`
 }

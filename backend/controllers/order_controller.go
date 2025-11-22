@@ -16,8 +16,8 @@ type OrderTicketInput struct {
 }
 
 type CreateOrderInput struct {
-	UserID  uint              `json:"user_id" binding:"required"`  // sementara kirim manual dari frontend/Postman
-	EventID uint              `json:"event_id" binding:"required"`
+	UserID  uint               `json:"user_id" binding:"required"`  // sementara kirim manual dari frontend/Postman
+	EventID uint               `json:"event_id" binding:"required"` // event yang sedang dipesan
 	Tickets []OrderTicketInput `json:"tickets" binding:"required,dive"`
 }
 
@@ -62,6 +62,7 @@ func CreateOrder(c *gin.Context) {
 
 	order := models.Order{
 		UserID:      req.UserID,
+		EventID:     req.EventID,
 		TotalAmount: total,
 		Status:      "PENDING",
 		Items:       items,
@@ -71,6 +72,19 @@ func CreateOrder(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Gagal membuat order",
+		})
+		return
+	}
+
+	// reload biar event & ticket_type ikut kebawa di response
+	if err := db.
+		Preload("Items.TicketType").
+		Preload("Event").
+		First(&order, order.ID).Error; err != nil {
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal mengambil detail order",
 		})
 		return
 	}
@@ -87,7 +101,11 @@ func GetOrderByID(c *gin.Context) {
 	id := c.Param("id")
 
 	var order models.Order
-	if err := db.Preload("Items").First(&order, id).Error; err != nil {
+	if err := db.
+		Preload("Items.TicketType").
+		Preload("Event").
+		First(&order, id).Error; err != nil {
+
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"message": "Order tidak ditemukan",
@@ -101,13 +119,14 @@ func GetOrderByID(c *gin.Context) {
 	})
 }
 
-// POST /orders/:id/pay  (pseudo payment)
+// POST /orders/:id/pay
 func PayOrder(c *gin.Context) {
 	db := config.DB
 	id := c.Param("id")
 
+	// 1. Ambil order dulu
 	var order models.Order
-	if err := db.First(&order, id).Error; err != nil {
+	if err := db.Preload("Items").First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
 			"message": "Order tidak ditemukan",
@@ -115,6 +134,7 @@ func PayOrder(c *gin.Context) {
 		return
 	}
 
+	// 2. Cek status order
 	if order.Status == "PAID" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -122,8 +142,38 @@ func PayOrder(c *gin.Context) {
 		})
 		return
 	}
+	if order.Status == "CANCELLED" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Order sudah dibatalkan",
+		})
+		return
+	}
+
+	// 3. Bind + validasi data pembayaran
+	var req models.PaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errorsResp := validationErrorsToResponse(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"errors":  errorsResp,
+		})
+		return
+	}
+
+	// 4. Optional: cek nominal dari frontend = total order
+	if int(req.Nominal) != order.TotalAmount {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Nominal pembayaran tidak sesuai dengan total order",
+		})
+		return
+	}
+
+	// 5. Anggap pembayaran selalu sukses (untuk TUBES)
 
 	order.Status = "PAID"
+
 	if err := db.Save(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -132,9 +182,22 @@ func PayOrder(c *gin.Context) {
 		return
 	}
 
+	// reload kalau mau bawa event & item
+	if err := db.
+		Preload("Items.TicketType").
+		Preload("Event").
+		First(&order, order.ID).Error; err != nil {
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal mengambil detail order setelah bayar",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Payment success",
+		"message": "Pembayaran berhasil, order telah dibayar",
 		"data":    order,
 	})
 }
@@ -162,7 +225,9 @@ func GetMyOrders(c *gin.Context) {
 	}
 
 	var orders []models.Order
-	if err := db.Preload("Items").
+	if err := db.
+		Preload("Items.TicketType").
+		Preload("Event").
 		Where("user_id = ?", uint(uid)).
 		Order("created_at DESC").
 		Find(&orders).Error; err != nil {
