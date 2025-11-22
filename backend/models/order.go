@@ -19,10 +19,7 @@ type Order struct {
 	Status      string    `json:"status"` // PENDING / PAID / CANCELLED
 	CreatedAt   time.Time `gorm:"column:created_at" json:"created_at"`
 
-	// relasi ke order_items
 	Items []OrderItem `gorm:"foreignKey:OrderID" json:"items"`
-
-	// relasi ke event
 	Event Event `json:"event,omitempty"`
 }
 
