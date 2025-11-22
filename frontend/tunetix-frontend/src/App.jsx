@@ -1,0 +1,30 @@
+import { Routes, Route } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import EventListPage from "./pages/EventListPage";
+import EventDetailsPage from "./pages/EventDetailsPage";
+import OrderPage from "./pages/OrderPage";
+import PaymentPage from "./pages/PaymentPage";
+import Navbar from "./components/Navbar";
+
+function App() {
+  return (
+    <>
+      <Navbar />
+
+      <Routes>
+        <Route path="/" element={<EventListPage />} />
+        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/events" element={<EventListPage />} />
+        <Route path="/events/:id" element={<EventDetailsPage />} />
+        <Route path="/order/:id" element={<OrderPage />} />
+
+        {/* ✔ FIX PAYMENT ROUTE */}
+        <Route path="/payment/:id" element={<PaymentPage />} />
+      </Routes>
+    </>
+  );
+}
+
+export default App;
