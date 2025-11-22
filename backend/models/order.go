@@ -5,10 +5,8 @@ import "time"
 // ==== FORM VALIDATION UNTUK PAYMENT ====
 
 type PaymentRequest struct {
-	NomorKartu       string  `json:"nomorKartu" binding:"required,numeric,min=16,max=19"`
-	Nominal          float64 `json:"nominal" binding:"required,gt=0"`
-	MetodePembayaran string  `json:"metodePembayaran" binding:"required,oneof=CASH TRANSFER E_WALLET"`
-	CVV              string  `json:"cvv" binding:"required,numeric,len=3"`
+	MetodePembayaran string `json:"metodePembayaran"`
+	Nominal          int    `json:"nominal"`
 }
 
 // ==== MODEL DB UNTUK TUNETIX ====
