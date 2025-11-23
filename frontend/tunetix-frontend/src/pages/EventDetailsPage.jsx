@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 export default function EventDetailsPage() {
-  const { id } = useParams(); // event_id
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [event, setEvent] = useState(null);
@@ -12,17 +12,12 @@ export default function EventDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // =========================
-  // FETCH EVENT DETAILS
-  // =========================
   useEffect(() => {
     async function loadData() {
       try {
-        // Fetch detail event
         const resEvent = await fetch(`http://localhost:3000/events/${id}`);
         const eventData = await resEvent.json();
 
-        // Fetch ticket types
         const resTickets = await fetch(`http://localhost:3000/events/${id}/tickets`);
         const ticketData = await resTickets.json();
 
@@ -35,13 +30,9 @@ export default function EventDetailsPage() {
         setLoading(false);
       }
     }
-
     loadData();
   }, [id]);
 
-  // =========================
-  // HANDLE CREATE ORDER
-  // =========================
   async function handleOrder(e) {
     e.preventDefault();
 
@@ -51,7 +42,7 @@ export default function EventDetailsPage() {
     }
 
     const payload = {
-      user_id: 1,        // sementara hardcode (nanti ambil dari auth)
+      user_id: 1,
       event_id: Number(id),
       tickets: [
         {
@@ -76,8 +67,6 @@ export default function EventDetailsPage() {
       }
 
       const orderId = data.data.order_id;
-
-      // redirect ke /order/:id
       navigate(`/order/${orderId}`);
     } catch (err) {
       console.error(err);
@@ -85,64 +74,87 @@ export default function EventDetailsPage() {
     }
   }
 
-  if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
-  if (error) return <p style={{ padding: 20, color: "red" }}>{error}</p>;
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-white to-cyan-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500"></div>
+          <p className="mt-4 text-gray-600 font-medium">Memuat detail event...</p>
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500 text-lg font-semibold">{error}</p>
+      </div>
+    );
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>{event.title}</h1>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50 py-12">
+      <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-3xl overflow-hidden">
+        {/* Event Image */}
+        <div className="relative h-80">
+          <img
+            src={event.image_url}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-4 left-4 bg-pink-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+            {event.category}
+          </div>
+        </div>
 
-      <img
-        src={event.image_url}
-        alt={event.title}
-        style={{ width: "100%", maxWidth: 500, borderRadius: 10 }}
-      />
+        {/* Event Info */}
+        <div className="p-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">{event.title}</h1>
+          <div className="flex items-center text-gray-600 mb-2">
+            <span className="mr-2">📍</span>
+            <span>{event.city} — {event.location}</span>
+          </div>
+          <p className="text-gray-700 mb-6">{event.description}</p>
 
-      <p><b>Kota:</b> {event.city}</p>
-      <p><b>Lokasi:</b> {event.location}</p>
-      <p><b>Kategori:</b> {event.category}</p>
-      <p><b>Deskripsi:</b> {event.description}</p>
+          {/* Ticket Form */}
+          <h3 className="text-2xl font-bold mb-4">Beli Tiket 🎫</h3>
+          <form onSubmit={handleOrder} className="space-y-4">
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">Jenis Tiket:</label>
+              <select
+                value={selectedTicket}
+                onChange={(e) => setSelectedTicket(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="">-- pilih tiket --</option>
+                {tickets.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} — Rp{t.price.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      <h3 style={{ marginTop: 30 }}>Beli Tiket</h3>
+            <div>
+              <label className="block mb-1 font-medium text-gray-700">Jumlah:</label>
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
 
-      <form onSubmit={handleOrder}>
-        <label>Jenis Tiket:</label>
-        <select
-          value={selectedTicket}
-          onChange={(e) => setSelectedTicket(e.target.value)}
-          required
-          style={{ display: "block", marginBottom: 10 }}
-        >
-          <option value="">-- pilih tiket --</option>
-
-          {tickets.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} — Rp{t.price.toLocaleString()}
-            </option>
-          ))}
-        </select>
-
-        <label>Jumlah:</label>
-        <input
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          style={{ display: "block", marginBottom: 20 }}
-        />
-
-        <button
-          type="submit"
-          style={{
-            padding: "10px 20px",
-            background: "black",
-            color: "white",
-            borderRadius: 5,
-          }}
-        >
-          Beli Tiket
-        </button>
-      </form>
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
+            >
+              Beli Tiket
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
