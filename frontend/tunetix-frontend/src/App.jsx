@@ -7,6 +7,7 @@ import OrderPage from "./pages/OrderPage";
 import PaymentPage from "./pages/PaymentPage";
 import MyOrdersPage from "./pages/MyOrdersPage"; // 🔥 tambahin ini
 import Navbar from "./components/Navbar";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
   return (
@@ -25,6 +26,8 @@ function App() {
         {/* ✅ My Orders, kamu bisa akses via /myorders atau /me/orders */}
         <Route path="/myorders" element={<MyOrdersPage />} />
         <Route path="/me/orders" element={<MyOrdersPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+
       </Routes>
     </>
   );

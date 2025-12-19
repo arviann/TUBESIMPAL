@@ -6,6 +6,7 @@ import EventDetailsPage from "./pages/EventDetailsPage";
 import OrderPage from "./pages/OrderPage";
 import PaymentPage from "./pages/PaymentPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const router = createBrowserRouter([
   { path: "/", element: <EventListPage /> },
@@ -15,6 +16,7 @@ const router = createBrowserRouter([
   { path: "/order/:id", element: <OrderPage /> },
   { path: "/payment/:id", element: <PaymentPage /> },
   { path: "/me/orders", element: <MyOrdersPage /> },  // sudah benar
+  {path: "/profile", element: <ProfilePage /> },
 ]);
 
 export default router;

@@ -9,27 +9,31 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch("http://localhost:3000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("Login berhasil!");
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/");
-      } else {
-        setError(data.message || "Email atau password salah");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Terjadi kesalahan server");
+  e.preventDefault();
+  try {
+    const res = await fetch("http://localhost:3000/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // ✅ simpan user (INI PENTING UNTUK PROFILE)
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      alert("Login berhasil!");
+      navigate("/");
+    } else {
+      setError(data.message || "Email atau password salah");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setError("Terjadi kesalahan server");
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50 flex items-center justify-center p-4">
