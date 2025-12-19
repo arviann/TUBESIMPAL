@@ -9,19 +9,51 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GET /events?city=Jakarta
+// GET /events?search=&city=&category=&start_date=&end_date=
 func GetEvents(c *gin.Context) {
 	db := config.DB
 
 	var events []models.Event
-	city := c.Query("city")
 
-	query := db
+	// Query params
+	search := c.Query("search")
+	city := c.Query("city")
+	category := c.Query("category")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	query := db.Model(&models.Event{})
+
+	// 🔍 Search (title + description + city)
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where(
+			"title LIKE ? OR description LIKE ? OR city LIKE ?",
+			like, like, like,
+		)
+	}
+
+	// 🏙 Filter city
 	if city != "" {
 		query = query.Where("city = ?", city)
 	}
 
-	if err := query.Find(&events).Error; err != nil {
+	// 🏷 Filter category
+	if category != "" {
+		query = query.Where("category = ?", category)
+	}
+
+	// 📅 Filter start date
+	if startDate != "" {
+		query = query.Where("start_date >= ?", startDate)
+	}
+
+	// 📅 Filter end date
+	if endDate != "" {
+		query = query.Where("end_date <= ?", endDate)
+	}
+
+	if err := query.Order("start_date ASC").Find(&events).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Gagal mengambil data event",

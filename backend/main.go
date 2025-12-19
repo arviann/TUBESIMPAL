@@ -38,6 +38,11 @@ func main() {
 	r.POST("/auth/register", controllers.Register)
 	r.POST("/auth/login", controllers.Login)
 
+	// Profile
+	r.GET("/profile", controllers.GetProfile)
+	r.PUT("/profile", controllers.UpdateProfile)
+	r.PUT("/profile/password", controllers.ChangePassword)
+
 	// ===== VALIDATION TUGAS LAMA =====
 	r.POST("/tickets/order", controllers.CreateTicketOrder)
 	r.POST("/payments/charge", controllers.ChargePayment)
