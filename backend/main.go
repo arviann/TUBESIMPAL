@@ -57,6 +57,7 @@ func main() {
 	r.POST("/orders", controllers.CreateOrder)
 	r.GET("/orders/:id", controllers.GetOrderByID)
 	r.POST("/orders/:id/pay", controllers.PayOrder)
+	r.POST("/orders/:id/cancel", controllers.CancelOrder)
 
 	// Dashboard user (My Orders)
 	r.GET("/me/orders", controllers.GetMyOrders)
