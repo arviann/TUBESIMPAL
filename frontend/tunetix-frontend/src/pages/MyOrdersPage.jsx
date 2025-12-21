@@ -10,40 +10,41 @@ export default function MyOrdersPage() {
 
   const navigate = useNavigate();
 
-  const storedUserId = localStorage.getItem("userId");
-  const userId = storedUserId || 1;
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const userId = storedUser?.id;
+
+  if (!userId) {
+  navigate("/auth/login");
+  return null;
+}
 
   useEffect(() => {
-    async function loadOrders() {
-      setLoading(true);
-      setError("");
+  async function loadOrders() {
+    setLoading(true);
+    setError("");
 
-      try {
-        const res = await fetch(`${API_BASE}/me/orders?user_id=${userId}`);
+    try {
+      const res = await fetch(
+        `${API_BASE}/me/orders?user_id=${userId}`
+      );
 
-        if (!res.ok) {
-          setError(`HTTP error ${res.status}`);
-          setLoading(false);
-          return;
-        }
+      const data = await res.json();
 
-        const data = await res.json();
-
-        if (data.success) {
-          setOrders(data.data || []);
-        } else {
-          setError(data.message || "Gagal mengambil data pesanan");
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Gagal terhubung ke server");
+      if (data.success) {
+        setOrders(data.data || []);
+      } else {
+        setError(data.message || "Gagal mengambil data pesanan");
       }
-
-      setLoading(false);
+    } catch (err) {
+      setError("Gagal terhubung ke server");
     }
 
-    loadOrders();
-  }, [userId]);
+    setLoading(false);
+  }
+
+  loadOrders();
+}, [userId]);
+
 
   if (loading)
     return (

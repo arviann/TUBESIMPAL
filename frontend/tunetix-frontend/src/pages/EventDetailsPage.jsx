@@ -32,47 +32,55 @@ export default function EventDetailsPage() {
     }
     loadData();
   }, [id]);
+const storedUser = JSON.parse(localStorage.getItem("user"));
 
-  async function handleOrder(e) {
-    e.preventDefault();
+async function handleOrder(e) {
+  e.preventDefault();
 
-    if (!selectedTicket) {
-      alert("Pilih jenis tiket terlebih dahulu");
+  if (!selectedTicket) {
+    alert("Pilih jenis tiket terlebih dahulu");
+    return;
+  }
+
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  if (!storedUser) {
+    alert("Silakan login terlebih dahulu");
+    navigate("/auth/login");
+    return;
+  }
+
+  const payload = {
+    user_id: storedUser.id, // ✅ DINAMIS
+    event_id: Number(id),
+    tickets: [
+      {
+        ticket_type_id: Number(selectedTicket),
+        quantity: Number(quantity),
+      },
+    ],
+  };
+
+  try {
+    const res = await fetch("http://localhost:3000/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert("Gagal membuat order");
       return;
     }
 
-    const payload = {
-      user_id: 1,
-      event_id: Number(id),
-      tickets: [
-        {
-          ticket_type_id: Number(selectedTicket),
-          quantity: Number(quantity),
-        },
-      ],
-    };
-
-    try {
-      const res = await fetch("http://localhost:3000/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        alert("Gagal membuat order");
-        return;
-      }
-
-      const orderId = data.data.order_id;
-      navigate(`/order/${orderId}`);
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan");
-    }
+    navigate(`/order/${data.data.order_id}`);
+  } catch (err) {
+    console.error(err);
+    alert("Terjadi kesalahan");
   }
+}
+
 
   if (loading)
     return (

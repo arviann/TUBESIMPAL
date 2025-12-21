@@ -5,7 +5,9 @@ const API_BASE = "http://localhost:3000";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const [storedUser, setStoredUser] = useState(() => {
+  return JSON.parse(localStorage.getItem("user"));
+});
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -44,36 +46,48 @@ export default function ProfilePage() {
     }
 
     if (storedUser?.id) fetchProfile();
-  }, [storedUser]);
+  }, [storedUser?.id]);
 
   // ✏️ Update profile
   const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setMessage("");
+  e.preventDefault();
+  setMessage("");
 
-    const res = await fetch(`${API_BASE}/profile`, {
+  try {
+    const res = await fetch("http://localhost:3000/profile", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         user_id: storedUser.id,
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
       }),
     });
 
     const data = await res.json();
+
     if (data.success) {
       setMessage("Profil berhasil diperbarui");
 
-      // 🔄 Update localStorage
-      localStorage.setItem(
-        "user",
-        JSON.stringify({ ...storedUser, name, email })
-      );
+      // 🔥 INI KUNCI UTAMA (SEBELUMNYA SERING LUPA)
+      const updatedUser = {
+        ...storedUser,
+        name,
+        email,
+      };
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
     } else {
       setMessage(data.message || "Gagal update profil");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setMessage("Terjadi kesalahan server");
+  }
+};
+
 
   // 🔐 Change password
   const handleChangePassword = async (e) => {
@@ -120,30 +134,38 @@ export default function ProfilePage() {
 
         {/* UPDATE PROFILE */}
         <form onSubmit={handleUpdateProfile} className="space-y-4 mb-8">
-          <div>
-            <label className="block text-sm font-semibold mb-1">Nama</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border px-3 py-2 rounded-lg"
-              required
-            />
-          </div>
 
-          <div>
-            <label className="block text-sm font-semibold mb-1">Email</label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border px-3 py-2 rounded-lg"
-              required
-            />
-          </div>
+  {/* NAMA */}
+  <div>
+    <label className="block text-sm font-semibold mb-1">Nama</label>
+    <input
+      type="text"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      className="w-full border px-3 py-2 rounded-lg"
+      placeholder="Nama"
+    />
+  </div>
 
-          <button className="w-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white py-2 rounded-lg font-bold">
-            Simpan Profil
-          </button>
-        </form>
+  {/* EMAIL */}
+  <div>
+    <label className="block text-sm font-semibold mb-1">Email</label>
+    <input
+      type="email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className="w-full border px-3 py-2 rounded-lg"
+      placeholder="Email"
+    />
+  </div>
+
+  <button
+    type="submit"
+    className="w-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white py-2 rounded-lg font-bold"
+  >
+    Simpan Profil
+  </button>
+</form>
 
         {/* CHANGE PASSWORD */}
         <form onSubmit={handleChangePassword} className="space-y-4">

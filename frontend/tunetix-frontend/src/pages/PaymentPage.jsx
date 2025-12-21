@@ -68,7 +68,7 @@ export default function PaymentPage() {
       }
 
       alert(data?.message || "Pembayaran berhasil");
-      navigate("/myorders");
+      navigate("/me/orders");
     } catch (err) {
       console.error("Submit error:", err);
       alert("Gagal terhubung ke server");
