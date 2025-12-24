@@ -1,19 +1,31 @@
-import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 
 const API_BASE = "http://localhost:3000";
 
 export default function OrderPage() {
-  const { id } = useParams(); // order_id
+  const { id } = useParams(); // order_id (db id)
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
 
+  // nomor urut per-user (UI)
+  const [displayOrderNo, setDisplayOrderNo] = useState(
+    location.state?.displayOrderNo || null
+  );
+
   // ambil user dari localStorage (key: "user")
   const storedUser = JSON.parse(localStorage.getItem("user") || "null");
   const userId = storedUser?.id;
+
+  // redirect kalau belum login
+  useEffect(() => {
+    if (!userId) navigate("/auth/login");
+  }, [userId, navigate]);
 
   const loadOrder = async () => {
     try {
@@ -35,23 +47,60 @@ export default function OrderPage() {
   };
 
   useEffect(() => {
+    if (!userId) return;
     loadOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, userId]);
+
+  // ✅ kalau displayOrderNo belum ada (misal direct URL), kita hitung dari /me/orders
+  useEffect(() => {
+    async function computeDisplayNo() {
+      if (!userId) return;
+      if (displayOrderNo) return; // udah ada dari state
+      if (!order?.order_id) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/me/orders?user_id=${userId}`);
+        const data = await res.json();
+        if (!data?.success) return;
+
+        const orders = data.data || [];
+
+        // urut oldest->newest, cari index order ini
+        const sortedAsc = [...orders].sort((a, b) => {
+          const ta = new Date(a.created_at || 0).getTime();
+          const tb = new Date(b.created_at || 0).getTime();
+          return ta - tb;
+        });
+
+        const idx = sortedAsc.findIndex(
+          (o) => Number(o.order_id) === Number(order.order_id)
+        );
+
+        if (idx >= 0) setDisplayOrderNo(idx + 1);
+      } catch (e) {
+        console.error("computeDisplayNo error:", e);
+      }
+    }
+
+    computeDisplayNo();
+  }, [userId, order, displayOrderNo]);
+
+  // ✅ Guard: kalau order bukan milik user → tendang ke MyOrders
+  useEffect(() => {
+    if (!order || !userId) return;
+
+    if (order.user_id && Number(order.user_id) !== Number(userId)) {
+      alert("Tidak punya akses ke order ini (order bukan milik akun kamu).");
+      navigate("/me/orders");
+    }
+  }, [order, userId, navigate]);
 
   const handleCancel = async () => {
     if (!order) return;
-
-    // harus login
     if (!userId) {
       alert("Kamu harus login dulu untuk membatalkan order.");
       navigate("/auth/login");
-      return;
-    }
-
-    // extra guard: kalau order ini bukan milik user, stop di FE biar ga buang request
-    if (order.user_id && Number(order.user_id) !== Number(userId)) {
-      alert("Tidak punya akses ke order ini (order bukan milik akun kamu).");
       return;
     }
 
@@ -61,13 +110,10 @@ export default function OrderPage() {
     try {
       setCancelLoading(true);
 
-      // ✅ sesuai backend: user_id dikirim via query param
+      // sesuai backend: user_id dikirim via query param
       const res = await fetch(
         `${API_BASE}/orders/${order.order_id}/cancel?user_id=${userId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
+        { method: "POST" }
       );
 
       const data = await res.json().catch(() => null);
@@ -77,12 +123,9 @@ export default function OrderPage() {
         return;
       }
 
-      // update state langsung (backend kamu return data order terbaru)
-      if (data?.data) {
-        setOrder(data.data);
-      } else {
-        setOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
-      }
+      // update state langsung
+      if (data?.data) setOrder(data.data);
+      else setOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
 
       alert(data?.message || "Order berhasil dibatalkan");
     } catch (err) {
@@ -92,6 +135,29 @@ export default function OrderPage() {
       setCancelLoading(false);
     }
   };
+
+  // ====== QR TOKEN (random tapi persistent per order) ======
+  const qrValue = useMemo(() => {
+    if (!order?.order_id || !userId) return "";
+
+    const key = `tunetix_qr_order_${order.order_id}`;
+    let token = localStorage.getItem(key);
+
+    if (!token) {
+      // random uuid kalau ada, fallback kalau browser ga support
+      const rand =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      token = `TUNETIX|ORDER:${order.order_id}|USER:${userId}|EVENT:${order.event_id || "-"}|TOKEN:${rand}`;
+      localStorage.setItem(key, token);
+    }
+
+    return token;
+  }, [order?.order_id, order?.event_id, userId]);
+
+  if (!userId) return null;
 
   if (loading)
     return (
@@ -106,7 +172,9 @@ export default function OrderPage() {
   if (!order)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500 text-lg font-semibold">Order tidak ditemukan.</p>
+        <p className="text-red-500 text-lg font-semibold">
+          Order tidak ditemukan.
+        </p>
       </div>
     );
 
@@ -119,12 +187,13 @@ export default function OrderPage() {
       ? "text-red-600 font-bold"
       : "text-gray-600 font-bold";
 
+  const shownOrderNo = displayOrderNo || 1;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50 py-12">
       <div className="max-w-3xl mx-auto bg-white shadow-xl rounded-3xl p-8">
         {/* Header: Back di kiri judul */}
         <div className="flex items-center gap-4 mb-4">
-          {/* Back to event (kiri judul) */}
           {order.event_id ? (
             <Link
               to={`/events/${order.event_id}`}
@@ -134,15 +203,17 @@ export default function OrderPage() {
             </Link>
           ) : (
             <button
-              onClick={() => window.history.back()}
+              onClick={() => navigate("/me/orders")}
               className="text-pink-600 font-bold hover:underline"
             >
               ← Back
             </button>
           )}
 
+          {/* ✅ pakai nomor urut per user */}
           <h1 className="text-3xl font-bold text-gray-800">
-            Order #{order.order_id}
+            Order #{shownOrderNo}
+            <span className="text-gray-400 text-base font-medium ml-2"></span>
           </h1>
         </div>
 
@@ -153,11 +224,13 @@ export default function OrderPage() {
           </p>
           <p>
             <span className="font-semibold">Total:</span>{" "}
-            Rp{(order.total_amount || 0).toLocaleString()}
+            Rp{(order.total_amount || 0).toLocaleString("id-ID")}
           </p>
         </div>
 
-        <h3 className="text-2xl font-bold text-gray-800 mb-4">Detail Tiket 🎫</h3>
+        <h3 className="text-2xl font-bold text-gray-800 mb-4">
+          Detail Tiket
+        </h3>
 
         <div className="space-y-4">
           {order.items?.length === 0 ? (
@@ -177,20 +250,47 @@ export default function OrderPage() {
                 </p>
                 <p>
                   <span className="font-semibold">Harga Satuan:</span>{" "}
-                  Rp{(item.unit_price || 0).toLocaleString()}
+                  Rp{(item.unit_price || 0).toLocaleString("id-ID")}
                 </p>
                 <p>
                   <span className="font-semibold">Subtotal:</span>{" "}
-                  Rp{(item.subtotal || 0).toLocaleString()}
+                  Rp{(item.subtotal || 0).toLocaleString("id-ID")}
                 </p>
               </div>
             ))
           )}
         </div>
 
+        {/* ✅ QR CODE: hanya kalau PAID */}
+        {order.status === "PAID" && (
+          <div className="mt-8 border border-gray-200 rounded-2xl p-6 text-center shadow-sm">
+            <h4 className="text-xl font-bold text-gray-800 mb-4">
+              QR Ticket
+            </h4>
+
+            <div className="flex justify-center">
+              <div className="bg-white p-4 rounded-xl border border-gray-200">
+                <QRCodeCanvas
+                  value={qrValue || "TUNETIX-EMPTY"}
+                  size={180}
+                  includeMargin={true}
+                />
+              </div>
+            </div>
+
+            <p className="mt-4 text-gray-700 font-medium">
+              Gunakan QR ini untuk Penukaran Tiket Fisik
+            </p>
+
+            {/* optional: kecilin info token biar keliatan developer mode (boleh hapus kalau ga mau) */}
+            <p className="mt-2 text-xs text-gray-400 break-all">
+              {qrValue}
+            </p>
+          </div>
+        )}
+
         {/* ACTION BUTTONS */}
         <div className="mt-8 space-y-3">
-          {/* Pay button only when pending */}
           {order.status === "PENDING" && (
             <Link to={`/payment/${order.order_id}`}>
               <button className="w-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all">
@@ -199,7 +299,6 @@ export default function OrderPage() {
             </Link>
           )}
 
-          {/* Cancel button only when pending */}
           {order.status === "PENDING" && (
             <button
               onClick={handleCancel}
@@ -214,14 +313,12 @@ export default function OrderPage() {
             </button>
           )}
 
-          {/* Paid text */}
           {order.status === "PAID" && (
             <p className="text-green-600 font-bold text-lg">
               ✔ Pembayaran sudah berhasil. Tiket siap digunakan.
             </p>
           )}
 
-          {/* Cancelled text */}
           {order.status === "CANCELLED" && (
             <p className="text-red-600 font-bold text-lg">
               ✖ Order sudah dibatalkan.
